@@ -15,7 +15,7 @@ pipeline {
     }
 
     environment {
-        TF_IN_AUTOMATION = 'true'
+        TF_IN_AUTOMATION   = 'true'
         AWS_DEFAULT_REGION = 'ap-south-1'
     }
 
@@ -23,26 +23,13 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: "${params.GIT_BRANCH}",
-                    url: 'https://github.com/your-org/terraform-aws-demo.git'
-            }
-        }
-
-        stage('Terraform Version') {
-            steps {
-                sh 'terraform version'
+                    url: 'https://github.com/Raveena92/terraform-jenkins-integration.git'
             }
         }
 
         stage('Terraform Init') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh '''
-                        terraform init -input=false
-                    '''
-                }
+                sh 'terraform init -input=false'
             }
         }
 
@@ -52,45 +39,42 @@ pipeline {
             }
         }
 
+        // PLAN stage with condition
         stage('Terraform Plan') {
+            when {
+                expression { params.TF_ACTION == 'plan' || params.TF_ACTION == 'apply' }
+            }
             steps {
-                withCredentials([
-                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh '''
-                        terraform plan -input=false -out=tfplan
-                    '''
-                }
+                sh 'terraform plan -input=false'
             }
         }
 
+        stage('Approval') {
+            when {
+                expression { params.TF_ACTION == 'apply' }
+            }
+            steps {
+                input message: 'Do you want to apply this Terraform plan?'
+            }
+        }
+
+        // APPLY stage
         stage('Terraform Apply') {
             when {
                 expression { params.TF_ACTION == 'apply' }
             }
             steps {
-                withCredentials([
-                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh '''
-                        terraform apply -input=false -auto-approve tfplan
-                    '''
-                }
+                sh 'terraform apply -input=false -auto-approve'
             }
         }
     }
 
     post {
-        always {
-            archiveArtifacts artifacts: 'tfplan', onlyIfSuccessful: false
-        }
         success {
-            echo 'Pipeline completed successfully'
+            echo 'Terraform pipeline completed successfully'
         }
         failure {
-            echo 'Pipeline failed'
+            echo 'Terraform pipeline failed'
         }
     }
 }
