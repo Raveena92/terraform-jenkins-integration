@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.5.0"
 
   backend "s3" {
-    bucket       = "my-terraform-state-bucket-check"
+    bucket       = "my-terraform-state-bucket-hands-on"
     key          = "jenkins-demo/dev/terraform.tfstate"
     region       = "ap-south-1"
     use_lockfile = true
